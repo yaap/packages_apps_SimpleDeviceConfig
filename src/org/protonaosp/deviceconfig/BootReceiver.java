@@ -24,6 +24,7 @@ import android.util.Log;
 
 public class BootReceiver extends BroadcastReceiver {
     private static final String TAG = "SimpleDeviceConfig";
+    private static final boolean DEBUG = false;
 
     @Override
     public void onReceive(Context context, Intent intent) {
@@ -34,15 +35,15 @@ public class BootReceiver extends BroadcastReceiver {
     }
 
     private void updateDefaultConfigs(Context context) {
-        updateConfig(context, R.array.configs_base, false);
-        updateConfig(context, R.array.configs_base_soft, true);
-
-        updateConfig(context, R.array.configs_device, false);
+        updateConfig(context, R.array.configs_base, false, "base");
+        updateConfig(context, R.array.configs_base_soft, true, "soft");
+        updateConfig(context, R.array.configs_device, false, "device");
     }
 
-    private void updateConfig(Context context, int configArray, boolean isSoft) {
+    private void updateConfig(Context context, int configArray, boolean isSoft, String name) {
         // Set current properties
         String[] rawProperties = context.getResources().getStringArray(configArray);
+        Log.i(TAG, String.format("Setting %d '%s' configs", rawProperties.length, name));
         for (String property : rawProperties) {
             // Format: namespace/key=value
             String[] kv = property.split("=");
@@ -57,8 +58,17 @@ public class BootReceiver extends BroadcastReceiver {
             }
 
             // Skip soft configs that already have values
-            if (!isSoft || DeviceConfig.getString(namespace, key, null) == null) {
+            String oldValue = DeviceConfig.getString(namespace, key, null);
+            if (!isSoft || oldValue == null) {
                 DeviceConfig.setProperty(namespace, key, value, false);
+                if (DEBUG) {
+                    Log.d(TAG, String.format("Setting: %s/%s=%s", namespace, key, value));
+                }
+            } else if (DEBUG) {
+                Log.d(TAG, String.format("Skipped: %s/%s=%s", namespace, key, value));
+            }
+            if (DEBUG && oldValue != null) {
+                Log.d(TAG, "old value: " + oldValue);
             }
         }
     }
